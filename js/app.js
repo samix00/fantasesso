@@ -5,6 +5,19 @@
 // Key di salvataggio in LocalStorage
 const STORAGE_KEY = 'fantasesso_data_v1';
 
+// Configurazione Firebase fornita dall'utente
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCePbP8jr1Mz2fajRTW0jJ33PF2i050kbI",
+  authDomain: "fantase-add4c.firebaseapp.com",
+  projectId: "fantase-add4c",
+  storageBucket: "fantase-add4c.firebasestorage.app",
+  messagingSenderId: "441250760398",
+  appId: "1:441250760398:web:68c5ced212b208e96b329f"
+};
+
+let db = null;
+let isApplyingCloudSnapshot = false;
+
 // Stato globale dell'applicazione
 let state = {
   leagueName: "Lega Fantasesso 2026 🔥",
@@ -112,12 +125,95 @@ function loadState() {
   }
 }
 
-function saveState() {
+function saveState(skipCloud = false) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (err) {
-    console.error("Errore nel salvataggio dei dati:", err);
-    showToast("Errore durante il salvataggio in locale", "error");
+    console.error("Errore nel salvataggio dei dati in locale:", err);
+  }
+
+  // Sincronizzazione automatica su Firebase Firestore in tempo reale
+  if (!skipCloud && !isApplyingCloudSnapshot && db) {
+    db.collection("leagues").doc("main").set(state).catch(err => {
+      console.warn("Avviso sincronizzazione Firestore:", err);
+    });
+  }
+}
+
+// Inizializzazione Firebase e listener real-time
+function initFirebase() {
+  const badgeDot = document.getElementById('cloud-status-dot');
+  const badgeText = document.getElementById('cloud-status-text');
+
+  function updateBadge(status, text) {
+    if (!badgeDot || !badgeText) return;
+    if (status === 'connected') {
+      badgeDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+      badgeText.className = 'text-emerald-400';
+      badgeText.textContent = text || 'Live Cloud';
+    } else if (status === 'warning') {
+      badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+      badgeText.className = 'text-amber-300';
+      badgeText.textContent = text || 'In attesa Firestore';
+    } else {
+      badgeDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+      badgeText.className = 'text-slate-400';
+      badgeText.textContent = text || 'Offline';
+    }
+  }
+
+  if (typeof firebase === 'undefined') {
+    updateBadge('offline', 'Solo Locale');
+    return;
+  }
+
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    db = firebase.firestore();
+
+    const leagueDoc = db.collection("leagues").doc("main");
+
+    // Listener in tempo reale: quando chiunque modifica qualcosa, tutti ricevono l'aggiornamento
+    leagueDoc.onSnapshot((docSnapshot) => {
+      if (docSnapshot.exists) {
+        const cloudData = docSnapshot.data();
+        if (cloudData) {
+          isApplyingCloudSnapshot = true;
+          state.leagueName = cloudData.leagueName || state.leagueName;
+          state.players = Array.isArray(cloudData.players) ? cloudData.players : state.players;
+          state.events = Array.isArray(cloudData.events) ? cloudData.events : state.events;
+          state.rules = Array.isArray(cloudData.rules) ? cloudData.rules : state.rules;
+
+          saveState(true); // salva solo in locale per cache, senza loop di rimbalzo su cloud
+          isApplyingCloudSnapshot = false;
+
+          // Aggiorna l'interfaccia
+          renderLeaderboard();
+          renderRules();
+          setupAssignForm();
+          renderFeed();
+
+          updateBadge('connected', 'Cloud Live 🟢');
+        }
+      } else {
+        // Prima volta in assoluto sul cloud: carica i dati locali come stato iniziale del gruppo
+        leagueDoc.set(state).then(() => {
+          updateBadge('connected', 'Cloud Live 🟢');
+        }).catch(err => {
+          console.warn("Firestore set error:", err);
+          updateBadge('warning', 'Crea Database Firestore');
+        });
+      }
+    }, (error) => {
+      console.warn("Firestore snapshot error:", error);
+      updateBadge('warning', 'Regole Firestore da abilitare');
+    });
+
+  } catch (err) {
+    console.error("Errore inizializzazione Firebase:", err);
+    updateBadge('offline', 'Errore Firebase');
   }
 }
 
@@ -965,6 +1061,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRules();
   setupAssignForm();
   renderFeed();
+
+  // Inizializza sincronizzazione cloud in tempo reale
+  initFirebase();
 
   // Avatar picker helpers
   const avatarGrid = document.getElementById('avatar-picker-grid');

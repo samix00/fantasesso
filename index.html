@@ -30,6 +30,10 @@
     }
   </script>
 
+  <!-- Firebase App & Firestore SDKs (Compat per vanilla JS) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <!-- Canvas Confetti per festeggiare l'assegnazione dei punti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
@@ -53,8 +57,12 @@
         </div>
       </div>
 
-      <!-- Quick Action: Assegna subito -->
-      <div class="flex items-center gap-2">
+      <!-- Quick Action & Cloud Badge -->
+      <div class="flex items-center gap-2.5">
+        <div id="cloud-status-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+          <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="cloud-status-text">Connessione Cloud...</span>
+        </div>
         <button onclick="switchTab('tab-assign')" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white font-bold text-xs shadow-lg shadow-rose-500/25 hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5">
           <span>⚡ Assegna Punti</span>
         </button>
