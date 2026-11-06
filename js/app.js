@@ -129,22 +129,18 @@ function loadState() {
         players: parsed.players || [],
         teams: Array.isArray(parsed.teams) ? parsed.teams : (INITIAL_SAMPLE_DATA.teams || []),
         events: parsed.events || [],
-        rules: Array.isArray(parsed.rules) && parsed.rules.length > 0 
-          ? parsed.rules 
-          : (Array.isArray(parsed.customRules) && parsed.customRules.length > 0 
-              ? [...JSON.parse(JSON.stringify(DEFAULT_RULES)), ...parsed.customRules] 
-              : JSON.parse(JSON.stringify(DEFAULT_RULES)))
+        rules: (Array.isArray(parsed.rules) ? parsed.rules : []).filter(r => r.id && r.id.startsWith('custom_'))
       };
     } else {
-      // Primo avvio: carica dati di prova
+      // Primo avvio
       state = JSON.parse(JSON.stringify(INITIAL_SAMPLE_DATA));
-      state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+      state.rules = [];
       saveState();
     }
   } catch (err) {
     console.error("Errore nel caricamento dei dati:", err);
     state = JSON.parse(JSON.stringify(INITIAL_SAMPLE_DATA));
-    state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+    state.rules = [];
   }
 }
 
@@ -208,7 +204,7 @@ function initFirebase() {
           state.players = Array.isArray(cloudData.players) ? cloudData.players : state.players;
           state.teams = Array.isArray(cloudData.teams) ? cloudData.teams : (state.teams || []);
           state.events = Array.isArray(cloudData.events) ? cloudData.events : state.events;
-          state.rules = Array.isArray(cloudData.rules) ? cloudData.rules : state.rules;
+          state.rules = (Array.isArray(cloudData.rules) ? cloudData.rules : []).filter(r => r.id && r.id.startsWith('custom_'));
 
           saveState(true); // salva solo in locale per cache, senza loop di rimbalzo su cloud
           isApplyingCloudSnapshot = false;
@@ -242,10 +238,10 @@ function initFirebase() {
   }
 }
 
-// Restituisce l'elenco delle regole attive (comprese modifiche o aggiunte)
+// Restituisce l'elenco delle regole attive
 function getAllRules() {
-  if (!state.rules || !Array.isArray(state.rules) || state.rules.length === 0) {
-    state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  if (!state.rules || !Array.isArray(state.rules)) {
+    state.rules = [];
   }
   return state.rules;
 }
@@ -586,7 +582,7 @@ function setLeaderboardMode(mode) {
 }
 
 // --- RENDER REGOLAMENTO ---
-let activeCategoryFilter = 'all';
+// --- RENDER REGOLAMENTO ---
 let currentSearchTerm = '';
 let currentTypeFilter = 'all'; // all, bonus, malus
 
@@ -597,11 +593,6 @@ function renderRules() {
 
   // Filtro
   const filtered = allRules.filter(rule => {
-    // Categoria
-    if (activeCategoryFilter !== 'all') {
-      if (activeCategoryFilter === 'custom' && !rule.id.startsWith('custom_')) return false;
-      if (activeCategoryFilter !== 'custom' && rule.category !== activeCategoryFilter) return false;
-    }
     // Tipo (bonus/malus)
     if (currentTypeFilter === 'bonus' && rule.points <= 0) return false;
     if (currentTypeFilter === 'malus' && rule.points >= 0) return false;
@@ -610,20 +601,38 @@ function renderRules() {
     if (currentSearchTerm) {
       const term = currentSearchTerm.toLowerCase();
       const matchName = rule.name.toLowerCase().includes(term);
-      const matchDesc = rule.description.toLowerCase().includes(term);
+      const matchDesc = (rule.description || '').toLowerCase().includes(term);
       return matchName || matchDesc;
     }
     return true;
   });
 
-  countBadge.textContent = `${filtered.length} di ${allRules.length} regole`;
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} di ${allRules.length} regole`;
+  }
 
+  // Nessuna regola nel database
+  if (allRules.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-16 text-center text-slate-400 glass-panel rounded-2xl">
+        <p class="text-5xl mb-3">📜</p>
+        <h4 class="text-lg font-bold text-white mb-1">Regolamento Azzerato</h4>
+        <p class="text-xs text-slate-400 mb-5 max-w-sm mx-auto">Nessuna regola presente. Clicca sul pulsante qui sotto per aggiungere le tue regole personalizzate!</p>
+        <button onclick="openModal('modal-add-rule')" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition-all">
+          ✨ Aggiungi Nuova Regola
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  // Nessun risultato con i filtri di ricerca
   if (filtered.length === 0) {
     container.innerHTML = `
       <div class="col-span-full py-12 text-center text-slate-400 glass-panel rounded-2xl">
         <p class="text-4xl mb-2">🔍</p>
         <p class="text-base font-medium">Nessuna regola trovata con questi filtri.</p>
-        <button class="mt-3 text-xs text-rose-400 hover:underline" onclick="resetRuleFilters()">Reimposta tutti i filtri</button>
+        <button class="mt-3 text-xs text-rose-400 hover:underline" onclick="resetRuleFilters()">Reimposta ricerca</button>
       </div>
     `;
     return;
@@ -634,23 +643,18 @@ function renderRules() {
     const badgeColor = isBonus 
       ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' 
       : 'bg-rose-500/15 text-rose-400 border-rose-500/30';
-    const categoryInfo = CATEGORIES[rule.category] || { label: rule.category, icon: '📌' };
 
     return `
       <div class="glass-panel glass-panel-hover rounded-xl p-4 flex flex-col justify-between transition-card">
         <div>
           <div class="flex items-start justify-between gap-2 mb-2">
-            <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-              <span>${categoryInfo.icon}</span>
-              <span>${categoryInfo.label}</span>
-            </span>
             <span class="px-2.5 py-1 rounded-full text-xs font-black border ${badgeColor}">
               ${isBonus ? '+' : ''}${rule.points} pt
             </span>
           </div>
 
           <h4 class="font-bold text-white text-base mb-1.5">${escapeHtml(rule.name)}</h4>
-          <p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(rule.description)}</p>
+          ${rule.description ? `<p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(rule.description)}</p>` : ''}
         </div>
 
         <div class="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between gap-2">
@@ -670,34 +674,13 @@ function renderRules() {
   }).join('');
 }
 
-function initRuleCategoryFilters() {
-  const container = document.getElementById('category-filter-buttons');
-  if (!container) return;
-
-  container.innerHTML = Object.entries(CATEGORIES).map(([key, cat]) => `
-    <button 
-      class="cat-btn px-3.5 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-850 text-slate-300 hover:border-rose-400/50 transition-all ${key === activeCategoryFilter ? 'active' : ''}"
-      onclick="setCategoryFilter('${key}')">
-      ${cat.icon} ${cat.label}
-    </button>
-  `).join('');
-}
-
-function setCategoryFilter(categoryKey) {
-  activeCategoryFilter = categoryKey;
-  initRuleCategoryFilters();
-  renderRules();
-}
-
 function resetRuleFilters() {
-  activeCategoryFilter = 'all';
   currentSearchTerm = '';
   currentTypeFilter = 'all';
   const searchInput = document.getElementById('rules-search-input');
   if (searchInput) searchInput.value = '';
   const typeFilter = document.getElementById('rules-type-filter');
   if (typeFilter) typeFilter.value = 'all';
-  initRuleCategoryFilters();
   renderRules();
 }
 
@@ -961,13 +944,11 @@ function handleAddCustomRuleSubmit(e) {
   e.preventDefault();
   const nameInput = document.getElementById('custom-rule-name');
   const pointsInput = document.getElementById('custom-rule-points');
-  const categorySelect = document.getElementById('custom-rule-category');
   const descInput = document.getElementById('custom-rule-desc');
 
   const name = nameInput.value.trim();
   const points = parseInt(pointsInput.value, 10);
-  const category = categorySelect.value;
-  const description = descInput.value.trim();
+  const description = descInput ? descInput.value.trim() : '';
 
   if (!name || isNaN(points) || points === 0) {
     showToast("Nome e punteggio valido sono obbligatori!", "warning");
@@ -978,8 +959,7 @@ function handleAddCustomRuleSubmit(e) {
     id: 'custom_' + Date.now(),
     name,
     points,
-    category: category || 'custom',
-    description: description || 'Regola creata dalla lega.',
+    description: description || '',
     type: points > 0 ? 'bonus' : 'malus'
   };
 
@@ -990,7 +970,7 @@ function handleAddCustomRuleSubmit(e) {
   // Reset
   nameInput.value = '';
   pointsInput.value = '';
-  descInput.value = '';
+  if (descInput) descInput.value = '';
   closeModal('modal-add-rule');
   renderRules();
   setupAssignForm();
@@ -1006,8 +986,8 @@ function openEditRuleModal(ruleId) {
   document.getElementById('edit-rule-id').value = rule.id;
   document.getElementById('edit-rule-name').value = rule.name;
   document.getElementById('edit-rule-points').value = rule.points;
-  document.getElementById('edit-rule-category').value = rule.category;
-  document.getElementById('edit-rule-desc').value = rule.description || '';
+  const descEl = document.getElementById('edit-rule-desc');
+  if (descEl) descEl.value = rule.description || '';
 
   openModal('modal-edit-rule');
 }
@@ -1017,8 +997,8 @@ function handleEditRuleSubmit(e) {
   const ruleId = document.getElementById('edit-rule-id').value;
   const name = document.getElementById('edit-rule-name').value.trim();
   const points = parseInt(document.getElementById('edit-rule-points').value, 10);
-  const category = document.getElementById('edit-rule-category').value;
-  const description = document.getElementById('edit-rule-desc').value.trim();
+  const descEl = document.getElementById('edit-rule-desc');
+  const description = descEl ? descEl.value.trim() : '';
 
   if (!name || isNaN(points) || points === 0) {
     showToast("Nome e punteggio valido sono obbligatori!", "warning");
@@ -1032,7 +1012,6 @@ function handleEditRuleSubmit(e) {
       ...rules[idx],
       name,
       points,
-      category,
       description,
       type: points > 0 ? 'bonus' : 'malus'
     };
@@ -1061,12 +1040,12 @@ function deleteCurrentRule() {
 }
 
 function resetDefaultRules() {
-  if (!confirm("Vuoi ripristinare tutte le regole originali del Fantasesso? Le modifiche personalizzate alle regole verranno reimpostate.")) return;
-  state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  if (!confirm("Vuoi azzerare tutte le regole del regolamento?")) return;
+  state.rules = [];
   saveState();
   renderRules();
   setupAssignForm();
-  showToast("Regole predefinite ripristinate con successo! 📜", "success");
+  showToast("Regolamento azzerato con successo! 📜", "info");
 }
 
 // Dettaglio Giocatore Modal
@@ -1439,7 +1418,6 @@ function escapeHtml(str) {
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
   initTabs();
-  initRuleCategoryFilters();
 
   // Render iniziale singoli e squadre
   renderLeaderboard();
