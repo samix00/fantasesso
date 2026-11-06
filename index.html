@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fantasesso 🔥 | Regolamento & Classifica Ufficiale</title>
+  
+  <!-- Meta tags per condivisione social -->
+  <meta name="description" content="La piattaforma definitiva per gestire la tua lega di Fantasesso tra amici: regolamento interattivo, calcolo bonus/malus e classifica live.">
+  <meta name="theme-color" content="#f43f5e">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              pink: '#ec4899',
+              rose: '#f43f5e',
+              purple: '#8b5cf6',
+              dark: '#0b0914'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Canvas Confetti per festeggiare l'assegnazione dei punti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <!-- Stili personalizzati -->
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="text-slate-100 flex flex-col min-h-screen">
+
+  <!-- NAVBAR SUPERIORE -->
+  <header class="sticky top-0 z-40 border-b border-rose-500/20 bg-[#0b0914]/80 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Titolo -->
+      <div class="flex items-center gap-3">
+        <span class="text-3xl filter drop-shadow">🔥</span>
+        <div>
+          <h1 class="font-black text-xl tracking-tight bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 bg-clip-text text-transparent glow-text">
+            FANTASESSO
+          </h1>
+          <span class="text-[10px] uppercase font-bold tracking-widest text-rose-300 block -mt-1">Edizione Ufficiale</span>
+        </div>
+      </div>
+
+      <!-- Quick Action: Assegna subito -->
+      <div class="flex items-center gap-2">
+        <button onclick="switchTab('tab-assign')" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white font-bold text-xs shadow-lg shadow-rose-500/25 hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5">
+          <span>⚡ Assegna Punti</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- NAVIGAZIONE A SCHEDE (TAB BAR) -->
+  <nav class="max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-2 w-full">
+    <div class="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none no-scrollbar">
+      <button data-target="tab-leaderboard" class="nav-tab active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap bg-slate-800/60 text-slate-300 hover:text-white">
+        <span>🏆</span> <span>Classifica</span>
+      </button>
+      <button data-target="tab-rules" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap bg-slate-800/60 text-slate-300 hover:text-white">
+        <span>📜</span> <span>Regolamento</span>
+      </button>
+      <button data-target="tab-assign" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap bg-slate-800/60 text-slate-300 hover:text-white">
+        <span>⚡</span> <span>Assegna Punti</span>
+      </button>
+      <button data-target="tab-feed" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap bg-slate-800/60 text-slate-300 hover:text-white">
+        <span>📢</span> <span>Cronologia</span>
+      </button>
+      <button data-target="tab-settings" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap bg-slate-800/60 text-slate-300 hover:text-white">
+        <span>⚙️</span> <span>Dati & Backup</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- CONTENUTO PRINCIPALE -->
+  <main class="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-4 w-full">
+
+    <!-- ============================================== -->
+    <!-- TAB 1: CLASSIFICA & GIOCATORI                  -->
+    <!-- ============================================== -->
+    <section id="tab-leaderboard" class="tab-content">
+      
+      <!-- Header Lega -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+        <div>
+          <h2 id="league-display-title" class="text-2xl sm:text-3xl font-black text-white">Lega Fantasesso 2026 🔥</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Classifica aggiornata con punteggio calcolato in base agli eventi registrati.</p>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <button onclick="openModal('modal-add-player')" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-purple-600/30 transition-all">
+            <span>➕ Nuovo Giocatore</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Podio dei primi 3 -->
+      <div id="podium-section" class="hidden"></div>
+
+      <!-- Elenco Classifica -->
+      <div class="space-y-3" id="leaderboard-list">
+        <!-- Render dinamico da js/app.js -->
+      </div>
+
+      <!-- Stato vuoto se nessun partecipante -->
+      <div id="empty-players-msg" class="hidden py-16 text-center glass-panel rounded-2xl">
+        <span class="text-5xl block mb-3">👥</span>
+        <h3 class="text-lg font-bold text-white mb-1">Nessun partecipante nella lega</h3>
+        <p class="text-xs text-slate-400 mb-4 max-w-sm mx-auto">Aggiungi i tuoi amici per iniziare a registrare bonus, malus e scalare il podio!</p>
+        <button onclick="openModal('modal-add-player')" class="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs">
+          Aggiungi il primo giocatore
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 2: REGOLAMENTO (BONUS & MALUS)             -->
+    <!-- ============================================== -->
+    <section id="tab-rules" class="tab-content hidden">
+      
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-black text-white">Regolamento Ufficiale 📜</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Consulta i punteggi di ciascun evento. Clicca su "Assegna" per attribuire i punti a un giocatore.</p>
+        </div>
+
+        <button onclick="openModal('modal-add-rule')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs flex items-center gap-1.5 self-start md:self-auto transition-colors">
+          <span>✨ Aggiungi Nuova Regola</span>
+        </button>
+      </div>
+
+      <!-- Filtri e Barra di Ricerca -->
+      <div class="glass-panel rounded-2xl p-4 mb-6 space-y-4">
+        
+        <div class="flex flex-col sm:flex-row gap-3">
+          <!-- Input Ricerca -->
+          <div class="relative flex-1">
+            <input 
+              type="text" 
+              id="rules-search-input" 
+              placeholder="Cerca una regola (es. doccia, discoteca, ex...)" 
+              class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors">
+            <span class="absolute right-3.5 top-3 text-slate-400 text-xs">🔍</span>
+          </div>
+
+          <!-- Filtro Tipo (Tutti / Solo Bonus / Solo Malus) -->
+          <div class="w-full sm:w-48">
+            <select id="rules-type-filter" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-rose-500">
+              <option value="all">Tutti (Bonus & Malus)</option>
+              <option value="bonus">✨ Solo Bonus (+)</option>
+              <option value="malus">🤡 Solo Malus (-)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bottoni Categoria -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar" id="category-filter-buttons">
+          <!-- Popolato dinamicamente da app.js -->
+        </div>
+
+        <div class="text-[11px] text-slate-400 font-semibold" id="rules-count-badge"></div>
+      </div>
+
+      <!-- Grid Cards Regole -->
+      <div id="rules-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Render dinamico da app.js -->
+      </div>
+
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 3: ASSEGNA PUNTI                           -->
+    <!-- ============================================== -->
+    <section id="tab-assign" class="tab-content hidden">
+      
+      <div class="max-w-xl mx-auto">
+        <div class="text-center mb-6">
+          <span class="text-4xl block mb-2">⚡</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-white">Assegna Punti</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Registra l'avvenimento sul diario e aggiorna la classifica all'istante.</p>
+        </div>
+
+        <form id="form-assign-points" class="glass-panel rounded-2xl p-6 sm:p-8 space-y-5">
+          
+          <!-- Selezione Giocatore -->
+          <div>
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">1. Chi è il protagonista? *</label>
+            <select id="assign-player-select" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-rose-500">
+              <!-- Popolato via JS -->
+            </select>
+          </div>
+
+          <!-- Selezione Regola -->
+          <div>
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">2. Quale regola ha sbloccato? *</label>
+            <select id="assign-rule-select" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-rose-500">
+              <!-- Popolato via JS -->
+            </select>
+          </div>
+
+          <!-- Campi Extra se Punto Personalizzato -->
+          <div id="custom-manual-fields" class="hidden p-4 rounded-xl bg-slate-900/80 border border-purple-500/30 space-y-3">
+            <h4 class="text-xs font-bold text-purple-400 uppercase">Dettagli Punto Manuale</h4>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Titolo dell'evento</label>
+              <input type="text" id="manual-point-title" placeholder="Es. Salvataggio in extremis" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Punti (+ per bonus, - per malus)</label>
+              <input type="number" id="manual-point-score" placeholder="Es. +30 oppure -20" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+            </div>
+          </div>
+
+          <!-- Note / Aneddoto -->
+          <div>
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">3. Note / Aneddoto (Facoltativo)</label>
+            <textarea id="assign-note-input" rows="3" placeholder="Racconta brevemente l'accaduto per gli archivi della lega..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-rose-500 resize-none"></textarea>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-rose-500 via-pink-600 to-purple-600 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-rose-500/30 hover:opacity-95 active:scale-[0.99] transition-all">
+            🚀 Registra Evento nel Diario
+          </button>
+
+        </form>
+      </div>
+
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 4: CRONOLOGIA / FEED                       -->
+    <!-- ============================================== -->
+    <section id="tab-feed" class="tab-content hidden">
+      
+      <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-black text-white">Diario degli Avvenimenti 📢</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">La cronologia di tutte le imprese, conquiste e figuracce registrate.</p>
+        </div>
+      </div>
+
+      <!-- Feed List -->
+      <div class="space-y-3" id="feed-list">
+        <!-- Popolato via JS -->
+      </div>
+
+      <!-- Stato vuoto -->
+      <div id="empty-feed-msg" class="hidden py-16 text-center glass-panel rounded-2xl">
+        <span class="text-5xl block mb-3">📭</span>
+        <h3 class="text-lg font-bold text-white mb-1">Ancora nessun evento registrato</h3>
+        <p class="text-xs text-slate-400 mb-4 max-w-sm mx-auto">I punti assegnati ai partecipanti compariranno qui in ordine cronologico.</p>
+        <button onclick="switchTab('tab-assign')" class="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs">
+          Assegna il primo punto
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 5: IMPOSTAZIONI & BACKUP                   -->
+    <!-- ============================================== -->
+    <section id="tab-settings" class="tab-content hidden">
+      
+      <div class="mb-6 pb-4 border-b border-slate-800">
+        <h2 class="text-2xl sm:text-3xl font-black text-white">Gestione Dati & Backup ⚙️</h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">I tuoi dati sono salvati al sicuro nella memoria di questo browser. Esporta e condividi il file con i tuoi amici per sincronizzare la lega.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Info Lega -->
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
+            <span>🏷️</span> <span>Personalizza Lega</span>
+          </h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Nome della Lega</label>
+              <input type="text" id="settings-league-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Esportazione / Condivisione -->
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
+            <span>📤</span> <span>Esporta & Condividi</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Scarica il backup o copia il codice JSON negli appunti per inviarlo su WhatsApp o Telegram agli altri membri.</p>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button onclick="exportDataAsJSON()" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition flex items-center justify-center gap-2">
+              <span>💾 Scarica File JSON</span>
+            </button>
+            <button onclick="copyDataToClipboard()" class="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition flex items-center justify-center gap-2">
+              <span>📋 Copia negli Appunti</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Importazione -->
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
+            <span>📥</span> <span>Importa Backup</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-3">Carica un file JSON oppure incolla la stringa del backup ricevuto da un amico.</p>
+          
+          <div class="space-y-3">
+            <div>
+              <input type="file" id="import-file-input" accept=".json" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-white hover:file:bg-slate-700 cursor-pointer">
+            </div>
+
+            <div class="pt-2">
+              <textarea id="import-text-area" rows="3" placeholder="Incolla qui il JSON di backup..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white resize-none"></textarea>
+              <button id="btn-import-text" class="mt-2 w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition">
+                Importa da testo incollato
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zona Pericolosa / Reset -->
+        <div class="glass-panel rounded-2xl p-6 border-rose-500/30">
+          <h3 class="font-bold text-lg text-rose-400 mb-2 flex items-center gap-2">
+            <span>⚠️</span> <span>Zona di Ripristino</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Puoi ripristinare i dati dimostrativi o cancellare l'intera lega se vuoi iniziare da zero.</p>
+          <div class="space-y-2.5">
+            <button onclick="resetToDefaultSample()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition">
+              🔄 Ricarica Dati di Esempio Iniziali
+            </button>
+            <button onclick="clearAllData()" class="w-full py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs transition">
+              🗑️ Azzera Tutti i Giocatori e Punteggi
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-800/80 py-6 mt-12 bg-[#0b0914]/90 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p>Fantasesso © 2026 • Creato per divertimento tra amici maggiorenni.</p>
+      <p class="text-slate-400">Pronto per il deploy gratuito su <strong>GitHub Pages</strong> 🚀</p>
+    </div>
+  </footer>
+
+  <!-- ============================================== -->
+  <!-- MODALI                                         -->
+  <!-- ============================================== -->
+
+  <!-- MODAL 1: Aggiungi Giocatore -->
+  <div id="modal-add-player" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel rounded-2xl p-6 sm:p-8 max-w-md w-full border border-purple-500/30 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-black text-white">Nuovo Partecipante</h3>
+        <button onclick="closeModal('modal-add-player')" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <form id="form-add-player" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Nome o Soprannome *</label>
+          <input type="text" id="new-player-name" required placeholder="Es. Marco" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Titolo / Sottotitolo simpatico</label>
+          <input type="text" id="new-player-nickname" placeholder="Es. Don Giovanni, Re della Notte..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Emoji Avatar</label>
+          <input type="text" id="new-player-avatar" value="🦁" class="w-20 text-center text-2xl bg-slate-900 border border-slate-700 rounded-xl py-1.5 text-white mb-2">
+          
+          <div class="p-2 bg-slate-900/60 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Oppure scegli al volo:</span>
+            <div id="avatar-picker-grid" class="flex flex-wrap gap-1"></div>
+          </div>
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button type="button" onclick="closeModal('modal-add-player')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs">
+            Annulla
+          </button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30">
+            Aggiungi alla Lega
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Aggiungi Regola Personalizzata -->
+  <div id="modal-add-rule" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel rounded-2xl p-6 sm:p-8 max-w-md w-full border border-rose-500/30 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-black text-white">Nuova Regola / Bonus / Malus</h3>
+        <button onclick="closeModal('modal-add-rule')" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <form id="form-add-rule" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Nome Regola *</label>
+          <input type="text" id="custom-rule-name" required placeholder="Es. Aperitivo Galeotto" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Punti (+ per bonus, - per malus) *</label>
+          <input type="number" id="custom-rule-points" required placeholder="Es. 25 o -30" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Categoria</label>
+          <select id="custom-rule-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+            <option value="flirt">💬 Flirt & Approcci</option>
+            <option value="spicy">🌶️ Spicy & Intimità</option>
+            <option value="location">📍 Location Insolite</option>
+            <option value="goliardia">🎉 Goliardia & Social</option>
+            <option value="malus">🤡 Malus & Cringe</option>
+            <option value="custom">✨ Altro / Personalizzata</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Descrizione / Condizione</label>
+          <textarea id="custom-rule-desc" rows="2" placeholder="Spiega brevemente quando e come si applica..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-rose-500 resize-none"></textarea>
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button type="button" onclick="closeModal('modal-add-rule')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs">
+            Annulla
+          </button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30">
+            Salva Regola
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Scheda Dettaglio Giocatore -->
+  <div id="modal-player-detail" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div id="modal-player-content" class="glass-panel rounded-2xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
+      <!-- Popolato dinamicamente via JS -->
+    </div>
+  </div>
+
+  <!-- Contenitore Toast Notifications -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- Scripts dell'applicazione -->
+  <script src="./js/rules.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
