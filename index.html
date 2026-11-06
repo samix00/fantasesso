@@ -337,6 +337,9 @@
           </h3>
           <p class="text-xs text-slate-400 mb-4">Puoi ripristinare i dati dimostrativi o cancellare l'intera lega se vuoi iniziare da zero.</p>
           <div class="space-y-2.5">
+            <button onclick="resetDefaultRules()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition">
+              📜 Ripristina Regole Predefinite del Fantasesso
+            </button>
             <button onclick="resetToDefaultSample()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition">
               🔄 Ricarica Dati di Esempio Iniziali
             </button>
@@ -452,6 +455,60 @@
       </form>
     </div>
   </div>
+
+  <!-- MODAL 2B: Modifica Regola Esistente -->
+  <div id="modal-edit-rule" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel rounded-2xl p-6 sm:p-8 max-w-md w-full border border-pink-500/30 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-black text-white">Modifica Regola</h3>
+        <button onclick="closeModal('modal-edit-rule')" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <form id="form-edit-rule" class="space-y-4">
+        <input type="hidden" id="edit-rule-id">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Nome Regola *</label>
+          <input type="text" id="edit-rule-name" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Punti (+ per bonus, - per malus) *</label>
+          <input type="number" id="edit-rule-points" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Categoria</label>
+          <select id="edit-rule-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+            <option value="flirt">💬 Flirt & Approcci</option>
+            <option value="spicy">🌶️ Spicy & Intimità</option>
+            <option value="location">📍 Location Insolite</option>
+            <option value="goliardia">🎉 Goliardia & Social</option>
+            <option value="malus">🤡 Malus & Cringe</option>
+            <option value="custom">✨ Altro / Personalizzata</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Descrizione / Condizione</label>
+          <textarea id="edit-rule-desc" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-rose-500 resize-none"></textarea>
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button type="button" onclick="deleteCurrentRule()" class="px-3 py-2.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-bold">
+            🗑️ Elimina
+          </button>
+          <button type="button" onclick="closeModal('modal-edit-rule')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs">
+            Annulla
+          </button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs shadow-lg shadow-pink-600/30">
+            Salva Modifiche
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 
   <!-- MODAL 3: Scheda Dettaglio Giocatore -->
   <div id="modal-player-detail" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">

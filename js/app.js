@@ -93,16 +93,22 @@ function loadState() {
         leagueName: parsed.leagueName || "Lega Fantasesso 2026 🔥",
         players: parsed.players || [],
         events: parsed.events || [],
-        customRules: parsed.customRules || []
+        rules: Array.isArray(parsed.rules) && parsed.rules.length > 0 
+          ? parsed.rules 
+          : (Array.isArray(parsed.customRules) && parsed.customRules.length > 0 
+              ? [...JSON.parse(JSON.stringify(DEFAULT_RULES)), ...parsed.customRules] 
+              : JSON.parse(JSON.stringify(DEFAULT_RULES)))
       };
     } else {
       // Primo avvio: carica dati di prova
       state = JSON.parse(JSON.stringify(INITIAL_SAMPLE_DATA));
+      state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
       saveState();
     }
   } catch (err) {
     console.error("Errore nel caricamento dei dati:", err);
     state = JSON.parse(JSON.stringify(INITIAL_SAMPLE_DATA));
+    state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
   }
 }
 
@@ -115,9 +121,12 @@ function saveState() {
   }
 }
 
-// Restituisce l'unione tra regole predefinite e regole create dall'utente
+// Restituisce l'elenco delle regole attive (comprese modifiche o aggiunte)
 function getAllRules() {
-  return [...DEFAULT_RULES, ...(state.customRules || [])];
+  if (!state.rules || !Array.isArray(state.rules) || state.rules.length === 0) {
+    state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  }
+  return state.rules;
 }
 
 // ==========================================
@@ -353,8 +362,12 @@ function renderRules() {
           <p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(rule.description)}</p>
         </div>
 
-        <div class="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
-          <span class="text-[11px] text-slate-500 font-mono">ID: ${rule.id}</span>
+        <div class="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between gap-2">
+          <button 
+            onclick="openEditRuleModal('${rule.id}')" 
+            class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors flex items-center gap-1">
+            <span>✏️ Modifica</span>
+          </button>
           <button 
             onclick="prefillAssign('${rule.id}')" 
             class="px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/40 transition-colors flex items-center gap-1">
@@ -663,7 +676,8 @@ function handleAddCustomRuleSubmit(e) {
     type: points > 0 ? 'bonus' : 'malus'
   };
 
-  state.customRules.push(newRule);
+  getAllRules();
+  state.rules.push(newRule);
   saveState();
 
   // Reset
@@ -674,6 +688,78 @@ function handleAddCustomRuleSubmit(e) {
   renderRules();
   setupAssignForm();
   showToast(`Nuova regola "${name}" salvata! ✨`, "success");
+}
+
+// Modifica Regola Esistente
+function openEditRuleModal(ruleId) {
+  const rules = getAllRules();
+  const rule = rules.find(r => r.id === ruleId);
+  if (!rule) return;
+
+  document.getElementById('edit-rule-id').value = rule.id;
+  document.getElementById('edit-rule-name').value = rule.name;
+  document.getElementById('edit-rule-points').value = rule.points;
+  document.getElementById('edit-rule-category').value = rule.category;
+  document.getElementById('edit-rule-desc').value = rule.description || '';
+
+  openModal('modal-edit-rule');
+}
+
+function handleEditRuleSubmit(e) {
+  e.preventDefault();
+  const ruleId = document.getElementById('edit-rule-id').value;
+  const name = document.getElementById('edit-rule-name').value.trim();
+  const points = parseInt(document.getElementById('edit-rule-points').value, 10);
+  const category = document.getElementById('edit-rule-category').value;
+  const description = document.getElementById('edit-rule-desc').value.trim();
+
+  if (!name || isNaN(points) || points === 0) {
+    showToast("Nome e punteggio valido sono obbligatori!", "warning");
+    return;
+  }
+
+  const rules = getAllRules();
+  const idx = rules.findIndex(r => r.id === ruleId);
+  if (idx !== -1) {
+    rules[idx] = {
+      ...rules[idx],
+      name,
+      points,
+      category,
+      description,
+      type: points > 0 ? 'bonus' : 'malus'
+    };
+    saveState();
+    closeModal('modal-edit-rule');
+    renderRules();
+    setupAssignForm();
+    showToast(`Regola "${name}" aggiornata! ✨`, "success");
+  }
+}
+
+function deleteCurrentRule() {
+  const ruleId = document.getElementById('edit-rule-id').value;
+  const rules = getAllRules();
+  const rule = rules.find(r => r.id === ruleId);
+  if (!rule) return;
+
+  if (!confirm(`Sei sicuro di voler eliminare la regola "${rule.name}"?`)) return;
+
+  state.rules = rules.filter(r => r.id !== ruleId);
+  saveState();
+  closeModal('modal-edit-rule');
+  renderRules();
+  setupAssignForm();
+  showToast(`Regola "${rule.name}" eliminata!`, "info");
+}
+
+function resetDefaultRules() {
+  if (!confirm("Vuoi ripristinare tutte le regole originali del Fantasesso? Le modifiche personalizzate alle regole verranno reimpostate.")) return;
+  state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  saveState();
+  renderRules();
+  setupAssignForm();
+  showToast("Regole predefinite ripristinate con successo! 📜", "success");
 }
 
 // Dettaglio Giocatore Modal
@@ -914,6 +1000,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listener form nuova regola
   const formAddRule = document.getElementById('form-add-rule');
   if (formAddRule) formAddRule.addEventListener('submit', handleAddCustomRuleSubmit);
+
+  // Listener form modifica regola
+  const formEditRule = document.getElementById('form-edit-rule');
+  if (formEditRule) formEditRule.addEventListener('submit', handleEditRuleSubmit);
 
   // Listener ricerca regole
   const rulesSearchInput = document.getElementById('rules-search-input');
