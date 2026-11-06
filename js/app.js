@@ -22,12 +22,14 @@ let isApplyingCloudSnapshot = false;
 let state = {
   leagueName: "Lega Fantasesso 2026 🔥",
   players: [],
+  teams: [],
   events: [],
-  customRules: []
+  rules: []
 };
 
 // Avatar predefiniti simpatici tra cui scegliere
 const DEFAULT_AVATARS = ["🦁", "🦊", "🦄", "👑", "🚀", "💣", "🍒", "🎭", "🍕", "🍸", "🕶️", "🌶️", "😈", "😇", "🧛", "🥷"];
+const DEFAULT_TEAM_AVATARS = ["🛡️", "🦁", "🚀", "💣", "🍒", "👑", "🦄", "🍸", "🍕", "🏆", "🔥", "⚡", "😈", "🖤", "🦅", "🏴‍☠️"];
 
 // Dati iniziali di esempio (se prima visita)
 const INITIAL_SAMPLE_DATA = {
@@ -38,6 +40,26 @@ const INITIAL_SAMPLE_DATA = {
     { id: "p3", name: "Andrea", nickname: "Mister Camporella", avatar: "🕶️", createdAt: Date.now() - 86400000 * 3 },
     { id: "p4", name: "Sofia", nickname: "Calamita da Club", avatar: "🍸", createdAt: Date.now() - 86400000 * 3 },
     { id: "p5", name: "Luca", nickname: "Re del Cringe", avatar: "🤡", createdAt: Date.now() - 86400000 * 2 }
+  ],
+  teams: [
+    {
+      id: "team_1",
+      name: "AC Camporella",
+      manager: "Marco",
+      avatar: "🛡️",
+      memberIds: ["p1", "p3"],
+      captainId: "p1",
+      createdAt: Date.now() - 86400000 * 3
+    },
+    {
+      id: "team_2",
+      name: "Cuori Ribelli",
+      manager: "Giulia",
+      avatar: "👑",
+      memberIds: ["p2", "p4"],
+      captainId: "p2",
+      createdAt: Date.now() - 86400000 * 3
+    }
   ],
   events: [
     {
@@ -105,6 +127,7 @@ function loadState() {
       state = {
         leagueName: parsed.leagueName || "Lega Fantasesso 2026 🔥",
         players: parsed.players || [],
+        teams: Array.isArray(parsed.teams) ? parsed.teams : (INITIAL_SAMPLE_DATA.teams || []),
         events: parsed.events || [],
         rules: Array.isArray(parsed.rules) && parsed.rules.length > 0 
           ? parsed.rules 
@@ -183,6 +206,7 @@ function initFirebase() {
           isApplyingCloudSnapshot = true;
           state.leagueName = cloudData.leagueName || state.leagueName;
           state.players = Array.isArray(cloudData.players) ? cloudData.players : state.players;
+          state.teams = Array.isArray(cloudData.teams) ? cloudData.teams : (state.teams || []);
           state.events = Array.isArray(cloudData.events) ? cloudData.events : state.events;
           state.rules = Array.isArray(cloudData.rules) ? cloudData.rules : state.rules;
 
@@ -191,6 +215,7 @@ function initFirebase() {
 
           // Aggiorna l'interfaccia
           renderLeaderboard();
+          renderTeamLeaderboard();
           renderRules();
           setupAssignForm();
           renderFeed();
@@ -388,6 +413,176 @@ function renderLeaderboard() {
       </div>
     `;
   }).join('');
+
+  // Aggiorna anche il badge delle squadre
+  const teamsBadge = document.getElementById('teams-count-badge');
+  if (teamsBadge) teamsBadge.textContent = (state.teams || []).length;
+}
+
+// --- CALCOLO & RENDER CLASSIFICA A SQUADRE ---
+function getTeamLeaderboard() {
+  if (!state.teams || !Array.isArray(state.teams)) state.teams = [];
+  const playerMap = new Map(state.players.map(p => [p.id, p]));
+
+  return state.teams.map(team => {
+    const memberIds = Array.isArray(team.memberIds) ? team.memberIds : [];
+    
+    // Tutti gli eventi che appartengono ai membri della squadra O assegnati direttamente alla squadra
+    const teamEvents = state.events.filter(e => memberIds.includes(e.playerId) || e.playerId === team.id);
+
+    let totalScore = 0;
+    let bonusCount = 0;
+    let malusCount = 0;
+
+    teamEvents.forEach(ev => {
+      totalScore += ev.points;
+      if (ev.points > 0) bonusCount++;
+      else if (ev.points < 0) malusCount++;
+    });
+
+    const members = memberIds.map(id => playerMap.get(id)).filter(Boolean);
+    const captain = playerMap.get(team.captainId);
+
+    return {
+      ...team,
+      totalScore,
+      bonusCount,
+      malusCount,
+      eventCount: teamEvents.length,
+      members,
+      captain,
+      events: teamEvents.sort((a, b) => b.timestamp - a.timestamp)
+    };
+  }).sort((a, b) => b.totalScore - a.totalScore);
+}
+
+function renderTeamLeaderboard() {
+  const container = document.getElementById('teams-list');
+  const podiumContainer = document.getElementById('teams-podium-section');
+  const emptyState = document.getElementById('empty-teams-msg');
+  const teamsBadge = document.getElementById('teams-count-badge');
+
+  if (teamsBadge) teamsBadge.textContent = (state.teams || []).length;
+  if (!container || !podiumContainer || !emptyState) return;
+
+  const rankedTeams = getTeamLeaderboard();
+
+  if (rankedTeams.length === 0) {
+    podiumContainer.innerHTML = '';
+    container.innerHTML = '';
+    emptyState.classList.remove('hidden');
+    return;
+  }
+  emptyState.classList.add('hidden');
+
+  // Podio Squadre (primi 3 posti)
+  if (rankedTeams.length >= 2) {
+    podiumContainer.classList.remove('hidden');
+    const first = rankedTeams[0];
+    const second = rankedTeams[1];
+    const third = rankedTeams.length > 2 ? rankedTeams[2] : null;
+
+    podiumContainer.innerHTML = `
+      <div class="grid grid-cols-3 gap-3 md:gap-6 items-end max-w-2xl mx-auto mb-8 pt-4">
+        <!-- 2° Posto -->
+        <div class="glass-panel podium-2 rounded-2xl p-4 text-center transition-card cursor-pointer" onclick="openTeamModal('${second.id}')">
+          <div class="text-3xl mb-1">${second.avatar || '🛡️'}</div>
+          <div class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-400 text-slate-900 mb-2">2° Posto</div>
+          <h4 class="font-bold text-slate-200 truncate text-sm md:text-base">${escapeHtml(second.name)}</h4>
+          <p class="text-xs text-slate-400 truncate">${second.manager ? 'Pres. ' + escapeHtml(second.manager) : ''}</p>
+          <div class="mt-2 text-xl md:text-2xl font-black text-slate-200">${second.totalScore > 0 ? '+' : ''}${second.totalScore} pt</div>
+        </div>
+
+        <!-- 1° Posto -->
+        <div class="glass-panel podium-1 rounded-2xl p-5 text-center transition-card cursor-pointer -mt-4 shadow-xl ring-2 ring-yellow-400/50" onclick="openTeamModal('${first.id}')">
+          <div class="text-4xl mb-1">${first.avatar || '👑'}</div>
+          <div class="inline-block px-3 py-1 rounded-full text-xs font-black bg-yellow-400 text-yellow-950 mb-2">🏆 1° Squadra</div>
+          <h3 class="font-extrabold text-yellow-300 truncate text-base md:text-lg">${escapeHtml(first.name)}</h3>
+          <p class="text-xs text-yellow-200/80 truncate">${first.manager ? 'Pres. ' + escapeHtml(first.manager) : ''}</p>
+          <div class="mt-2 text-2xl md:text-3xl font-black text-yellow-400 glow-text">${first.totalScore > 0 ? '+' : ''}${first.totalScore} pt</div>
+        </div>
+
+        <!-- 3° Posto -->
+        ${third ? `
+        <div class="glass-panel podium-3 rounded-2xl p-4 text-center transition-card cursor-pointer" onclick="openTeamModal('${third.id}')">
+          <div class="text-3xl mb-1">${third.avatar || '🥉'}</div>
+          <div class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-600 text-amber-950 mb-2">3° Posto</div>
+          <h4 class="font-bold text-amber-300 truncate text-sm md:text-base">${escapeHtml(third.name)}</h4>
+          <p class="text-xs text-amber-300/70 truncate">${third.manager ? 'Pres. ' + escapeHtml(third.manager) : ''}</p>
+          <div class="mt-2 text-xl md:text-2xl font-black text-amber-400">${third.totalScore > 0 ? '+' : ''}${third.totalScore} pt</div>
+        </div>
+        ` : `<div></div>`}
+      </div>
+    `;
+  } else {
+    podiumContainer.innerHTML = '';
+    podiumContainer.classList.add('hidden');
+  }
+
+  // Lista Squadre
+  container.innerHTML = rankedTeams.map((team, index) => {
+    const scoreColor = team.totalScore > 0 ? 'text-emerald-400' : team.totalScore < 0 ? 'text-rose-400' : 'text-slate-300';
+    const rankBadge = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+
+    const memberChips = team.members.map(m => `
+      <span class="inline-flex items-center gap-1 text-[11px] bg-slate-800/90 border border-slate-700/80 px-2 py-0.5 rounded-full text-slate-200">
+        <span>${m.avatar}</span>
+        <span>${escapeHtml(m.name)}</span>
+        ${team.captainId === m.id ? '<span class="text-yellow-400 font-bold" title="Capitano">©️</span>' : ''}
+      </span>
+    `).join('');
+
+    return `
+      <div class="glass-panel glass-panel-hover rounded-xl p-4 flex items-center justify-between transition-card cursor-pointer" onclick="openTeamModal('${team.id}')">
+        <div class="flex items-center space-x-3.5 min-w-0">
+          <span class="font-black text-base md:text-lg w-7 text-slate-400 text-center">${rankBadge}</span>
+          <span class="text-2xl md:text-3xl p-2 rounded-xl bg-slate-800/80 border border-slate-700/60">${team.avatar || '🛡️'}</span>
+          <div class="min-w-0">
+            <h4 class="font-bold text-white text-base md:text-lg truncate flex items-center gap-2">
+              ${escapeHtml(team.name)}
+              ${team.manager ? `<span class="text-xs font-normal text-rose-300/80 bg-rose-500/10 px-2 py-0.5 rounded-full hidden sm:inline-block">Pres. ${escapeHtml(team.manager)}</span>` : ''}
+            </h4>
+            <div class="flex items-center gap-1.5 flex-wrap mt-1">
+              ${memberChips.length > 0 ? memberChips : '<span class="text-xs text-slate-500">Nessun componente</span>'}
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-400 mt-1">
+              <span class="text-emerald-400">🔥 ${team.bonusCount} bonus</span>
+              <span>•</span>
+              <span class="text-rose-400">🤡 ${team.malusCount} malus</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-right pl-3 flex-shrink-0">
+          <span class="text-xl md:text-2xl font-black ${scoreColor}">${team.totalScore > 0 ? '+' : ''}${team.totalScore}</span>
+          <span class="text-xs text-slate-400 block font-semibold uppercase">Punti Squadra</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+let currentLeaderboardMode = 'singles';
+function setLeaderboardMode(mode) {
+  currentLeaderboardMode = mode;
+  const btnSingles = document.getElementById('btn-view-singles');
+  const btnTeams = document.getElementById('btn-view-teams');
+  const singlesView = document.getElementById('singles-view');
+  const teamsView = document.getElementById('teams-view');
+
+  if (mode === 'teams') {
+    if (btnTeams) btnTeams.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow';
+    if (btnSingles) btnSingles.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white';
+    if (singlesView) singlesView.classList.add('hidden');
+    if (teamsView) teamsView.classList.remove('hidden');
+    renderTeamLeaderboard();
+  } else {
+    if (btnSingles) btnSingles.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow';
+    if (btnTeams) btnTeams.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white';
+    if (singlesView) singlesView.classList.remove('hidden');
+    if (teamsView) teamsView.classList.add('hidden');
+    renderLeaderboard();
+  }
 }
 
 // --- RENDER REGOLAMENTO ---
@@ -512,13 +707,23 @@ function setupAssignForm() {
   const ruleSelect = document.getElementById('assign-rule-select');
   const allRules = getAllRules();
 
-  // Popola selezione giocatori
+  // Popola selezione protagonisti (giocatori o intere squadre)
   if (playerSelect) {
+    const teams = state.teams || [];
     playerSelect.innerHTML = `
-      <option value="">-- Seleziona il Giocatore --</option>
-      ${state.players.map(p => `
-        <option value="${p.id}">${p.avatar} ${escapeHtml(p.name)} (${escapeHtml(p.nickname || 'Nessun titolo')})</option>
-      `).join('')}
+      <option value="">-- Seleziona Giocatore o Squadra --</option>
+      <optgroup label="👤 GIOCATORI">
+        ${state.players.map(p => `
+          <option value="${p.id}">${p.avatar} ${escapeHtml(p.name)} (${escapeHtml(p.nickname || 'Singolo')})</option>
+        `).join('')}
+      </optgroup>
+      ${teams.length > 0 ? `
+      <optgroup label="🛡️ SQUADRE">
+        ${teams.map(t => `
+          <option value="${t.id}">${t.avatar} ${escapeHtml(t.name)} (Pres. ${escapeHtml(t.manager || 'N/A')})</option>
+        `).join('')}
+      </optgroup>
+      ` : ''}
     `;
   }
 
@@ -560,6 +765,7 @@ function renderFeed() {
   const allRules = getAllRules();
   const ruleMap = new Map(allRules.map(r => [r.id, r]));
   const playerMap = new Map(state.players.map(p => [p.id, p]));
+  const teamMap = new Map((state.teams || []).map(t => [t.id, t]));
 
   const sortedEvents = [...state.events].sort((a, b) => b.timestamp - a.timestamp);
 
@@ -571,7 +777,7 @@ function renderFeed() {
   emptyState.classList.add('hidden');
 
   container.innerHTML = sortedEvents.map(ev => {
-    const player = playerMap.get(ev.playerId) || { name: 'Giocatore rimosso', avatar: '👤' };
+    const player = playerMap.get(ev.playerId) || teamMap.get(ev.playerId) || { name: 'Partecipante rimosso', avatar: '👤' };
     const isBonus = ev.points > 0;
     const badgeColor = isBonus ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-400 bg-rose-500/10 border-rose-500/30';
     const dateFormatted = new Date(ev.timestamp).toLocaleString('it-IT', {
@@ -692,6 +898,7 @@ function handleAssignSubmit(e) {
 
   // Aggiorna viste
   renderLeaderboard();
+  renderTeamLeaderboard();
   renderFeed();
 }
 
@@ -700,13 +907,17 @@ function deleteEvent(eventId) {
   state.events = state.events.filter(e => e.id !== eventId);
   saveState();
   renderLeaderboard();
+  renderTeamLeaderboard();
   renderFeed();
   showToast("Evento rimosso con successo", "info");
 }
 
 function getPlayerName(playerId) {
   const p = state.players.find(x => x.id === playerId);
-  return p ? p.name : "Giocatore";
+  if (p) return p.name;
+  const t = (state.teams || []).find(x => x.id === playerId);
+  if (t) return `Squadra ${t.name}`;
+  return "Partecipante";
 }
 
 // Aggiungi Giocatore
@@ -919,12 +1130,181 @@ function deletePlayer(playerId) {
   if (!confirm("Sei sicuro di voler rimuovere questo partecipante e tutti i suoi punti?")) return;
   state.players = state.players.filter(p => p.id !== playerId);
   state.events = state.events.filter(e => e.playerId !== playerId);
+  if (state.teams) {
+    state.teams.forEach(t => {
+      t.memberIds = (t.memberIds || []).filter(id => id !== playerId);
+      if (t.captainId === playerId) t.captainId = '';
+    });
+  }
   saveState();
   closeModal('modal-player-detail');
   renderLeaderboard();
+  renderTeamLeaderboard();
   setupAssignForm();
   renderFeed();
+  populateTeamModalPickers();
   showToast("Partecipante eliminato", "info");
+}
+
+// ==========================================
+// GESTIONE SQUADRE (CREAZIONE, DETTAGLIO, ELIMINAZIONE)
+// ==========================================
+function populateTeamModalPickers() {
+  const container = document.getElementById('team-members-checkbox-container');
+  const captainSelect = document.getElementById('new-team-captain');
+  if (!container || !captainSelect) return;
+
+  if (!state.players || state.players.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-400 p-3 text-center">Nessun giocatore registrato. Aggiungi prima dei partecipanti!</p>';
+    captainSelect.innerHTML = '<option value="">-- Nessun giocatore disponibile --</option>';
+    return;
+  }
+
+  container.innerHTML = state.players.map(p => `
+    <label class="flex items-center gap-2.5 p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 cursor-pointer border border-slate-700/50">
+      <input type="checkbox" name="team-member-chk" value="${p.id}" class="rounded text-rose-500 focus:ring-rose-400 w-4 h-4">
+      <span class="text-lg">${p.avatar}</span>
+      <span class="text-xs font-bold text-white">${escapeHtml(p.name)}</span>
+      ${p.nickname ? `<span class="text-[10px] text-slate-400 truncate">(${escapeHtml(p.nickname)})</span>` : ''}
+    </label>
+  `).join('');
+
+  captainSelect.innerHTML = `
+    <option value="">-- Nessun capitano assegnato --</option>
+    ${state.players.map(p => `<option value="${p.id}">${p.avatar} ${escapeHtml(p.name)}</option>`).join('')}
+  `;
+}
+
+function handleAddTeamSubmit(e) {
+  e.preventDefault();
+  const nameInput = document.getElementById('new-team-name');
+  const managerInput = document.getElementById('new-team-manager');
+  const avatarInput = document.getElementById('new-team-avatar');
+  const captainSelect = document.getElementById('new-team-captain');
+
+  const name = nameInput.value.trim();
+  const manager = managerInput.value.trim();
+  const avatar = avatarInput.value.trim() || '🛡️';
+  const captainId = captainSelect.value || '';
+
+  const selectedCheckboxes = document.querySelectorAll('input[name="team-member-chk"]:checked');
+  const memberIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+  if (!name) {
+    showToast("Inserisci il nome della squadra!", "warning");
+    return;
+  }
+  if (memberIds.length === 0) {
+    showToast("Seleziona almeno un giocatore per la squadra!", "warning");
+    return;
+  }
+
+  const newTeam = {
+    id: 'team_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    name,
+    manager,
+    avatar,
+    memberIds,
+    captainId,
+    createdAt: Date.now()
+  };
+
+  if (!state.teams) state.teams = [];
+  state.teams.push(newTeam);
+  saveState();
+
+  // Reset form e chiusura
+  nameInput.value = '';
+  managerInput.value = '';
+  closeModal('modal-add-team');
+
+  // Aggiorna viste
+  renderTeamLeaderboard();
+  renderLeaderboard();
+  setupAssignForm();
+  showToast(`Squadra "${name}" creata con successo! 🛡️`, "success");
+}
+
+function openTeamModal(teamId) {
+  const team = (state.teams || []).find(t => t.id === teamId);
+  if (!team) return;
+
+  const playerMap = new Map(state.players.map(p => [p.id, p]));
+  const memberIds = Array.isArray(team.memberIds) ? team.memberIds : [];
+  
+  // Calcolo punti membri
+  const membersWithScores = memberIds.map(id => {
+    const player = playerMap.get(id);
+    if (!player) return null;
+    const playerEvents = state.events.filter(e => e.playerId === id);
+    const score = playerEvents.reduce((acc, curr) => acc + curr.points, 0);
+    return { ...player, score, eventCount: playerEvents.length };
+  }).filter(Boolean);
+
+  // Punti assegnati direttamente alla squadra
+  const teamSpecificEvents = state.events.filter(e => e.playerId === team.id);
+  const teamSpecificScore = teamSpecificEvents.reduce((acc, curr) => acc + curr.points, 0);
+
+  const totalScore = membersWithScores.reduce((acc, curr) => acc + curr.score, 0) + teamSpecificScore;
+
+  const modal = document.getElementById('modal-team-detail');
+  const content = document.getElementById('modal-team-content');
+
+  content.innerHTML = `
+    <div class="text-center pb-4 border-b border-slate-700/60">
+      <div class="text-5xl mb-2">${team.avatar || '🛡️'}</div>
+      <h3 class="text-2xl font-black text-white">${escapeHtml(team.name)}</h3>
+      ${team.manager ? `<p class="text-xs font-semibold text-rose-300">Presidente: ${escapeHtml(team.manager)}</p>` : ''}
+      <div class="mt-3 inline-block px-4 py-1.5 rounded-full bg-slate-800 text-lg font-black ${totalScore >= 0 ? 'text-emerald-400' : 'text-rose-400'} border border-slate-700">
+        Punteggio Squadra: ${totalScore > 0 ? '+' : ''}${totalScore} pt
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Componenti della Squadra (${membersWithScores.length})</h4>
+      <div class="space-y-2 max-h-56 overflow-y-auto pr-1">
+        ${membersWithScores.map(m => `
+          <div class="glass-panel p-2.5 rounded-lg flex items-center justify-between text-xs cursor-pointer hover:border-rose-500/40 transition-colors" onclick="closeModal('modal-team-detail'); openPlayerModal('${m.id}')">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">${m.avatar}</span>
+              <div>
+                <div class="font-bold text-white flex items-center gap-1.5">
+                  ${escapeHtml(m.name)}
+                  ${team.captainId === m.id ? '<span class="text-[10px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.5 rounded font-black">CAPITANO</span>' : ''}
+                </div>
+                <div class="text-[10px] text-slate-400">${m.eventCount} eventi registrati</div>
+              </div>
+            </div>
+            <span class="font-black text-sm ${m.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+              ${m.score > 0 ? '+' : ''}${m.score} pt
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="mt-6 pt-4 border-t border-slate-700/60 flex items-center justify-between">
+      <button onclick="deleteTeam('${team.id}')" class="text-xs text-rose-400 hover:text-rose-300 hover:underline">
+        🗑️ Elimina Squadra
+      </button>
+      <button onclick="closeModal('modal-team-detail')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors">
+        Chiudi
+      </button>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+}
+
+function deleteTeam(teamId) {
+  if (!confirm("Sei sicuro di voler eliminare questa squadra? I punti dei singoli giocatori rimarranno comunque intatti.")) return;
+  state.teams = (state.teams || []).filter(t => t.id !== teamId);
+  saveState();
+  closeModal('modal-team-detail');
+  renderTeamLeaderboard();
+  renderLeaderboard();
+  setupAssignForm();
+  showToast("Squadra eliminata", "info");
 }
 
 // ==========================================
@@ -1006,7 +1386,12 @@ function clearAllData() {
 // ==========================================
 function openModal(id) {
   const m = document.getElementById(id);
-  if (m) m.classList.remove('hidden');
+  if (m) {
+    if (id === 'modal-add-team') {
+      populateTeamModalPickers();
+    }
+    m.classList.remove('hidden');
+  }
 }
 
 function closeModal(id) {
@@ -1056,8 +1441,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initRuleCategoryFilters();
 
-  // Render iniziale
+  // Render iniziale singoli e squadre
   renderLeaderboard();
+  renderTeamLeaderboard();
   renderRules();
   setupAssignForm();
   renderFeed();
@@ -1065,7 +1451,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inizializza sincronizzazione cloud in tempo reale
   initFirebase();
 
-  // Avatar picker helpers
+  // Avatar picker giocatori
   const avatarGrid = document.getElementById('avatar-picker-grid');
   if (avatarGrid) {
     avatarGrid.innerHTML = DEFAULT_AVATARS.map(av => `
@@ -1075,9 +1461,23 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
+  // Avatar picker squadre
+  const teamAvatarGrid = document.getElementById('team-avatar-picker-grid');
+  if (teamAvatarGrid) {
+    teamAvatarGrid.innerHTML = DEFAULT_TEAM_AVATARS.map(av => `
+      <button type="button" class="text-xl p-1.5 rounded-lg hover:bg-slate-700 focus:ring-2 focus:ring-rose-400 transition" onclick="document.getElementById('new-team-avatar').value='${av}'">
+        ${av}
+      </button>
+    `).join('');
+  }
+
   // Listener form assegna
   const formAssign = document.getElementById('form-assign-points');
   if (formAssign) formAssign.addEventListener('submit', handleAssignSubmit);
+
+  // Listener form nuova squadra
+  const formAddTeam = document.getElementById('form-add-team');
+  if (formAddTeam) formAddTeam.addEventListener('submit', handleAddTeamSubmit);
 
   // Listener toggle campi manuali in form assegna
   const ruleSelect = document.getElementById('assign-rule-select');

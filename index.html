@@ -96,39 +96,77 @@
   <main class="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-4 w-full">
 
     <!-- ============================================== -->
-    <!-- TAB 1: CLASSIFICA & GIOCATORI                  -->
+    <!-- TAB 1: CLASSIFICA (SINGOLI & SQUADRE)          -->
     <!-- ============================================== -->
     <section id="tab-leaderboard" class="tab-content">
       
-      <!-- Header Lega -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+      <!-- Header Lega & Selettore Vista -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
         <div>
           <h2 id="league-display-title" class="text-2xl sm:text-3xl font-black text-white">Lega Fantasesso 2026 🔥</h2>
-          <p class="text-xs sm:text-sm text-slate-400 mt-1">Classifica aggiornata con punteggio calcolato in base agli eventi registrati.</p>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Classifica in tempo reale sincronizzata sul cloud.</p>
         </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-          <button onclick="openModal('modal-add-player')" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-purple-600/30 transition-all">
-            <span>➕ Nuovo Giocatore</span>
+
+        <!-- Selettore Singoli / Squadre & Bottoni Azione -->
+        <div class="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
+          <div class="inline-flex p-1 rounded-xl bg-slate-900 border border-slate-800">
+            <button id="btn-view-singles" type="button" onclick="setLeaderboardMode('singles')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow">
+              👤 Singoli
+            </button>
+            <button id="btn-view-teams" type="button" onclick="setLeaderboardMode('teams')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white">
+              🛡️ Squadre (<span id="teams-count-badge">0</span>)
+            </button>
+          </div>
+
+          <button onclick="openModal('modal-add-player')" class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-purple-600/30 transition-all">
+            <span>➕ Giocatore</span>
+          </button>
+          <button onclick="openModal('modal-add-team')" class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-rose-600/30 transition-all">
+            <span>🛡️ Squadra</span>
           </button>
         </div>
       </div>
 
-      <!-- Podio dei primi 3 -->
-      <div id="podium-section" class="hidden"></div>
+      <!-- VISTA 1: CLASSIFICA SINGOLI -->
+      <div id="singles-view">
+        <!-- Podio dei primi 3 singoli -->
+        <div id="podium-section" class="hidden"></div>
 
-      <!-- Elenco Classifica -->
-      <div class="space-y-3" id="leaderboard-list">
-        <!-- Render dinamico da js/app.js -->
+        <!-- Elenco Classifica Singoli -->
+        <div class="space-y-3" id="leaderboard-list">
+          <!-- Render dinamico da js/app.js -->
+        </div>
+
+        <!-- Stato vuoto se nessun partecipante -->
+        <div id="empty-players-msg" class="hidden py-16 text-center glass-panel rounded-2xl">
+          <span class="text-5xl block mb-3">👥</span>
+          <h3 class="text-lg font-bold text-white mb-1">Nessun partecipante nella lega</h3>
+          <p class="text-xs text-slate-400 mb-4 max-w-sm mx-auto">Aggiungi i tuoi amici per iniziare a registrare bonus, malus e scalare il podio!</p>
+          <button onclick="openModal('modal-add-player')" class="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs">
+            Aggiungi il primo giocatore
+          </button>
+        </div>
       </div>
 
-      <!-- Stato vuoto se nessun partecipante -->
-      <div id="empty-players-msg" class="hidden py-16 text-center glass-panel rounded-2xl">
-        <span class="text-5xl block mb-3">👥</span>
-        <h3 class="text-lg font-bold text-white mb-1">Nessun partecipante nella lega</h3>
-        <p class="text-xs text-slate-400 mb-4 max-w-sm mx-auto">Aggiungi i tuoi amici per iniziare a registrare bonus, malus e scalare il podio!</p>
-        <button onclick="openModal('modal-add-player')" class="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs">
-          Aggiungi il primo giocatore
-        </button>
+      <!-- VISTA 2: CLASSIFICA SQUADRE -->
+      <div id="teams-view" class="hidden">
+        <!-- Podio delle prime 3 squadre -->
+        <div id="teams-podium-section" class="hidden"></div>
+
+        <!-- Elenco Classifica Squadre -->
+        <div class="space-y-3" id="teams-list">
+          <!-- Render dinamico da js/app.js -->
+        </div>
+
+        <!-- Stato vuoto se nessuna squadra -->
+        <div id="empty-teams-msg" class="hidden py-16 text-center glass-panel rounded-2xl">
+          <span class="text-5xl block mb-3">🛡️</span>
+          <h3 class="text-lg font-bold text-white mb-1">Nessuna squadra ancora creata</h3>
+          <p class="text-xs text-slate-400 mb-4 max-w-sm mx-auto">Crea una squadra fantacalcistica, assegna un presidente, un capitano e i componenti!</p>
+          <button onclick="openModal('modal-add-team')" class="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs">
+            Crea la prima squadra
+          </button>
+        </div>
       </div>
 
     </section>
@@ -521,6 +559,73 @@
   <!-- MODAL 3: Scheda Dettaglio Giocatore -->
   <div id="modal-player-detail" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
     <div id="modal-player-content" class="glass-panel rounded-2xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
+      <!-- Popolato dinamicamente via JS -->
+    </div>
+  </div>
+
+  <!-- MODAL 4: Nuova Squadra -->
+  <div id="modal-add-team" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel rounded-2xl p-6 sm:p-8 max-w-lg w-full border border-rose-500/30 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-black text-white flex items-center gap-2">
+          <span>🛡️</span> <span>Crea Nuova Squadra</span>
+        </h3>
+        <button onclick="closeModal('modal-add-team')" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <form id="form-add-team" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Nome Squadra *</label>
+          <input type="text" id="new-team-name" required placeholder="Es. AC Camporella, Real Rimorchio..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Presidente / Fantallenatore</label>
+          <input type="text" id="new-team-manager" placeholder="Es. Marco (o il tuo nome)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Stemma Emoji</label>
+          <input type="text" id="new-team-avatar" value="🛡️" class="w-20 text-center text-2xl bg-slate-900 border border-slate-700 rounded-xl py-1.5 text-white mb-2">
+          
+          <div class="p-2 bg-slate-900/60 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Scegli uno stemma:</span>
+            <div id="team-avatar-picker-grid" class="flex flex-wrap gap-1"></div>
+          </div>
+        </div>
+
+        <!-- Selezione Componenti Squadra -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Seleziona i Componenti della Squadra *</label>
+          <p class="text-[11px] text-slate-400 mb-2">I punti conquistati da questi giocatori verranno sommati al punteggio totale della squadra!</p>
+          <div id="team-members-checkbox-container" class="space-y-1.5 max-h-44 overflow-y-auto p-2 bg-slate-900/80 rounded-xl border border-slate-800">
+            <!-- Popolato via JS con i giocatori registrati -->
+          </div>
+        </div>
+
+        <!-- Selezione Capitano -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Capitano della Squadra (Facoltativo)</label>
+          <select id="new-team-captain" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500">
+            <option value="">-- Nessun capitano assegnato --</option>
+          </select>
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button type="button" onclick="closeModal('modal-add-team')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs">
+            Annulla
+          </button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30">
+            Crea Squadra
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 5: Scheda Dettaglio Squadra -->
+  <div id="modal-team-detail" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div id="modal-team-content" class="glass-panel rounded-2xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
       <!-- Popolato dinamicamente via JS -->
     </div>
   </div>
